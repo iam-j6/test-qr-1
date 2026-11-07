@@ -13,9 +13,12 @@ def get_sheets_client():
     creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
     if creds_json:
         creds_dict = json.loads(creds_json)
+        # Asegurar que los saltos de línea de la llave privada se interpreten correctamente
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            
         creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     else:
-        # Para pruebas locales si usas archivo json físico
         creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
     
     client = gspread.authorize(creds)
