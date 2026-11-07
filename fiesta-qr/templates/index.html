@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Acceso - Fiesta</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+        <h1 class="text-xl font-bold text-center mb-4 text-cyan-400">Control de Puerta 🎟️</h1>
+        
+        <div id="reader" class="w-full rounded-xl overflow-hidden mb-4 border border-slate-700"></div>
+        
+        <div id="result" class="hidden p-4 rounded-xl text-center font-medium text-lg mb-4 whitespace-pre-line"></div>
+        
+        <button id="restart-btn" onclick="location.reload()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-3 px-4 rounded-xl hidden transition shadow-lg shadow-cyan-900/30">
+            Escanear Siguiente Entrada
+        </button>
+    </div>
+
+    <script>
+        let html5QrCode;
+
+        function onScanSuccess(decodedText, decodedResult) {
+            // Detener escáner temporalmente al detectar código
+            html5QrCode.stop().then(() => {
+                verificarEntrada(decodedText);
+            }).catch(err => console.error("Error al detener cámara", err));
+        }
+
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 240, height: 240 } },
+            onScanSuccess
+        ).catch(err => {
+            console.error(`Error al iniciar cámara: ${err}`);
+            alert("No se pudo acceder a la cámara. Asegúrate de dar permisos HTTPS.");
+        });
+
+        function verificarEntrada(qrCode) {
+            fetch('/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qr_code: qrCode })
+            })
+            .then(res => res.json())
+            .then(data => {
+                const resultDiv = document.getElementById('result');
+                resultDiv.classList.remove('hidden');
+                document.getElementById('restart-btn').classList.remove('hidden');
+                
+                if (data.status === 'success') {
+                    resultDiv.className = "p-4 rounded-xl text-center font-medium text-lg mb-4 bg-emerald-600/20 border border-emerald-500 text-emerald-300 whitespace-pre-line";
+                } else if (data.status === 'already_used') {
+                    resultDiv.className = "p-4 rounded-xl text-center font-medium text-lg mb-4 bg-amber-600/20 border border-amber-500 text-amber-300 whitespace-pre-line";
+                } else {
+                    resultDiv.className = "p-4 rounded-xl text-center font-medium text-lg mb-4 bg-rose-600/20 border border-rose-500 text-rose-300 whitespace-pre-line";
+                }
+                resultDiv.innerText = data.message;
+            })
+            .catch(err => {
+                console.error('Error de red:', err);
+            });
+        }
+    </script>
+</body>
+</html>
